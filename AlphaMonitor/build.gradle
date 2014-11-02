@@ -1,0 +1,36 @@
+apply plugin: 'android'
+
+android {
+    compileSdkVersion 19
+    buildToolsVersion '19.1.0'
+
+    defaultConfig {
+        minSdkVersion 18 //BluetoothAdapter.LeScanCallback was added in 18
+        targetSdkVersion 19
+        versionCode 5
+        versionName "0.5"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file("/Users/mvklingeren/Desktop/restracksks")
+            storePassword "Elisabeth2408"
+            keyAlias "RestrackKS"
+            keyPassword "Elisabeth2408"
+        }
+    }
+
+    buildTypes {
+        release {
+            runProguard false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
+            signingConfig signingConfigs.release
+        }
+    }
+}
+
+dependencies {
+    compile fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
+    compile files('lib/achartengine-1.1.0.jar')
+//    compile 'com.google.android.gms:play-services:+'
+}
