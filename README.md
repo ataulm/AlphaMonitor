@@ -11,11 +11,10 @@ CHANGES:
 
 
 Licence
+----------------
 
 This application uses achartengine under Apache License 2.0
-
 This application is licensed under MIT, excluding achartengine. 
-----------------
 
 The MIT License (MIT)
 
