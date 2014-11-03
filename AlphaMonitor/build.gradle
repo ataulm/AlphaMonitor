@@ -13,10 +13,10 @@ android {
 
     signingConfigs {
         release {
-            storeFile file("/Users/mvklingeren/Desktop/restracksks")
-            storePassword "Elisabeth2408"
-            keyAlias "RestrackKS"
-            keyPassword "Elisabeth2408"
+//            storeFile file("/Users/mvklingeren/Desktop/restracksks")
+//            storePassword ""
+//            keyAlias "RestrackKS"
+//            keyPassword ""
         }
     }
 
@@ -32,5 +32,5 @@ android {
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar', '*.aar'])
     compile files('lib/achartengine-1.1.0.jar')
-//    compile 'com.google.android.gms:play-services:+'
+//    compile 'com.google.android.gms:play-services'
 }

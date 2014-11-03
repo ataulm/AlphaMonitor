@@ -17,6 +17,7 @@
 package com.restracks.android.ble;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
 import android.content.*;
@@ -56,6 +57,9 @@ public class DeviceControlActivity extends Activity {
     public static final String EXTRAS_DEVICE_NAME = "DEVICE_NAME";
     public static final String EXTRAS_DEVICE_ADDRESS = "DEVICE_ADDRESS";
 
+    public enum RunningState{start,stopped,pause}
+
+    private RunningState curState=RunningState.stopped;
     private TextView mConnectionState;
     private TextView mDataField;
     private TextView mDataFieldHeartRate;
@@ -112,10 +116,14 @@ public class DeviceControlActivity extends Activity {
                 mConnected = true;
                 updateConnectionState(R.string.connected);
                 invalidateOptionsMenu();
+                mChronometer.start(SystemClock.elapsedRealtime());
+                ((Button)findViewById(R.id.btnStartPause)).setText("Pause");
             } else if (BluetoothLeService.ACTION_GATT_DISCONNECTED.equals(action)) {
                 mConnected = false;
                 updateConnectionState(R.string.disconnected);
                 invalidateOptionsMenu();
+                mChronometer.stop();
+                ((Button)findViewById(R.id.btnStartPause)).setText("Start");
                 clearUI();
             } else if (BluetoothLeService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
                 // Show all the supported services and characteristics on the user interface.
@@ -190,13 +198,13 @@ public class DeviceControlActivity extends Activity {
         bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
 
         // Check in settings whether to display graph
-        if (SP.getBoolean("pref_showgraph",true)){
+        //if (SP.getBoolean("pref_showgraph",true)){
            CreateMainChart();
-        }
+        //}
 
         // Check in settings whether to display start/stop
-        Boolean showStartStopButtons = SP.getBoolean("pref_startstop", true);
-        findViewById(R.id.btnSetStartStop).setVisibility(showStartStopButtons ? View.VISIBLE : View.GONE);
+        //Boolean showStartStopButtons = SP.getBoolean("pref_startstop", true);
+        //findViewById(R.id.btnSetStartStop).setVisibility(showStartStopButtons ? View.VISIBLE : View.GONE);
     }
 
     private long resumeTime;
@@ -209,10 +217,9 @@ public class DeviceControlActivity extends Activity {
             reset=false;
             ((Button)findViewById(R.id.btnStartPause)).setText("Pause");
 
-            // also clear chart
             // Clear the chart
-            mChart.repaint();
             xSeries.clear();
+            mChart.repaint();
 
             return;
         }
@@ -222,6 +229,9 @@ public class DeviceControlActivity extends Activity {
             resumeTime  = SystemClock.elapsedRealtime() - mChronometer.getBase();
             mChronometer.stop();
             ((Button)findViewById(R.id.btnStartPause)).setText("Start");
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setMessage("Send results per e-mail to destination (specified in settings)?").setPositiveButton("Yes", dialogClickListener)
+                    .setNegativeButton("No", dialogClickListener).show();
         }
         else{
             mChronometer.start(SystemClock.elapsedRealtime() - resumeTime);
@@ -356,11 +366,11 @@ public class DeviceControlActivity extends Activity {
             case R.id.menu_disconnect:
                 mBluetoothLeService.disconnect();
                 return true;
-            case R.id.menu_gmap:
-                Intent mapIntent = new Intent("com.restracks.android.ble.MapsActivity.HOME");
-                //mapIntent.putExtra("HEARTRATE",curRate);
-                startActivity(mapIntent);
-                return true;
+//            case R.id.menu_gmap:
+//                Intent mapIntent = new Intent("com.restracks.android.ble.MapsActivity.HOME");
+//                //mapIntent.putExtra("HEARTRATE",curRate);
+//                startActivity(mapIntent);
+//                return true;
             case R.id.menu_settings:
                 Intent prefIntent = new Intent("android.intent.action.PREFS");
                 startActivity(prefIntent);
@@ -389,12 +399,13 @@ public class DeviceControlActivity extends Activity {
             curRate=Integer.parseInt(data);
 
             // If we do display a Graph, make sure to update it
-            if (SP.getBoolean("pref_showgraph",true)){
-                if (!SP.getBoolean("pref_startstop",true) | SP.getBoolean("pref_startstop",true) && mChronometer.getStarted()){
+          //  if (SP.getBoolean("pref_showgraph",true)){
+           //     if (!SP.getBoolean("pref_startstop",true) | SP.getBoolean("pref_startstop",true) &&
+           if (mChronometer.getStarted()){
                     xSeries.add(measureMoment++,Integer.parseInt(data));
                     mChart.repaint();
                 }
-            }
+           // }
         }
     }
 
@@ -480,6 +491,23 @@ public class DeviceControlActivity extends Activity {
 //        );
 //        mGattServicesList.setAdapter(gattServiceAdapter);
     }
+
+    DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+        @Override
+        public void onClick(DialogInterface dialog, int which) {
+            switch (which){
+                case DialogInterface.BUTTON_POSITIVE:
+                    //Yes button clicked
+
+                    break;
+
+                case DialogInterface.BUTTON_NEGATIVE:
+                    //No button clicked
+
+                    break;
+            }
+        }
+    };
 
     private static IntentFilter makeGattUpdateIntentFilter() {
         final IntentFilter intentFilter = new IntentFilter();

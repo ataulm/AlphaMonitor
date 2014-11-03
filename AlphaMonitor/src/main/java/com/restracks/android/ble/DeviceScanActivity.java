@@ -262,7 +262,9 @@ public class DeviceScanActivity extends ListActivity {
                     mLeDeviceListAdapter.notifyDataSetChanged();
 
                     String deviceName = device.getName();
-                    if (deviceName.equals("MIO GLOBAL")){           // FOUND MIO ALPHA, CONNECT RIGHT AWAY
+
+                    // When a MIO ALPHA is found, connect right away
+                    if (deviceName !=null && deviceName.equals("MIO GLOBAL")){
                         Intent intent = new Intent(decTrl);
                         intent.putExtra(DeviceControlActivity.EXTRAS_DEVICE_NAME, device.getName());
                         intent.putExtra(DeviceControlActivity.EXTRAS_DEVICE_ADDRESS, device.getAddress());

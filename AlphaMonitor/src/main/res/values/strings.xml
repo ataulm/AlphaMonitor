@@ -43,6 +43,8 @@
     <string name="pref_logenable_summ">Store all available sensor data to file </string>
     <string name="pref_logloc">Logfile path location</string>
     <string name="pref_logloc_summ">Path to the logfile</string>
+    <string name="pref_email">E-mail destination address statistics</string>
+    <string name="pref_email_summ">The e-mail address that will be used  to send statistics to</string>
     <string name="pref_showgraph">Show graph on main-screen</string>
     <string name="pref_startstop">Use start/stop buttons</string>
     <string name="pref_startstop_summ">When disabled, logging and map are updated continuously</string>
