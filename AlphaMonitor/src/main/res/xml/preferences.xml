@@ -5,11 +5,11 @@
             android:title="@string/pref_logenable"
             android:summary="@string/pref_logenable_summ"
             android:defaultValue="true" />
-    <EditTextPreference
-            android:key="pref_email"
-            android:title="@string/pref_email"
-            android:summary="@string/pref_email_summ"
-            android:defaultValue="your-email@address" />
+    <!--<EditTextPreference-->
+            <!--android:key="pref_email"-->
+            <!--android:title="@string/pref_email"-->
+            <!--android:summary="@string/pref_email_summ"-->
+            <!--android:defaultValue="your-email@address" />-->
     <EditTextPreference
             android:key="pref_logloc1"
             android:title="@string/pref_logloc"

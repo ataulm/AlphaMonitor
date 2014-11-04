@@ -22,7 +22,9 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
 import android.content.*;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.IBinder;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
@@ -31,6 +33,8 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.*;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import org.achartengine.ChartFactory;
 import org.achartengine.GraphicalView;
 import org.achartengine.chart.PointStyle;
@@ -39,10 +43,16 @@ import org.achartengine.model.XYMultipleSeriesDataset;
 import org.achartengine.model.XYSeries;
 import org.achartengine.renderer.XYMultipleSeriesRenderer;
 import org.achartengine.renderer.XYSeriesRenderer;
+import org.json.JSONObject;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.lang.reflect.Type;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 /**
  * For a given BLE device, this Activity provides the user interface to connect, display data,
@@ -68,8 +78,9 @@ public class DeviceControlActivity extends Activity {
     private String mDeviceAddress;
     private ExpandableListView mGattServicesList;
     private BluetoothLeService mBluetoothLeService;
-    private ArrayList<ArrayList<BluetoothGattCharacteristic>> mGattCharacteristics =
-            new ArrayList<ArrayList<BluetoothGattCharacteristic>>();
+    private ArrayList<ArrayList<BluetoothGattCharacteristic>> mGattCharacteristics = new ArrayList<ArrayList<BluetoothGattCharacteristic>>();
+    private ArrayList<Beat> recordedData = new ArrayList<Beat>();
+
     private boolean mConnected = false;
     private BluetoothGattCharacteristic mNotifyCharacteristic;
 
@@ -230,7 +241,7 @@ public class DeviceControlActivity extends Activity {
             mChronometer.stop();
             ((Button)findViewById(R.id.btnStartPause)).setText("Start");
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setMessage("Send results per e-mail to destination (specified in settings)?").setPositiveButton("Yes", dialogClickListener)
+            builder.setMessage("Would you like to store results (to: email / Google drive /etc)?").setPositiveButton("Yes", dialogClickListener)
                     .setNegativeButton("No", dialogClickListener).show();
         }
         else{
@@ -248,7 +259,7 @@ public class DeviceControlActivity extends Activity {
     private void CreateMainChart()
     {
         // Create a Dataset to hold the XSeries.
-        XYMultipleSeriesDataset dataset=new XYMultipleSeriesDataset();
+        XYMultipleSeriesDataset dataset =new XYMultipleSeriesDataset();
 
         // Add X series to the Dataset.
         dataset.addSeries(xSeries);
@@ -398,11 +409,19 @@ public class DeviceControlActivity extends Activity {
             mDataFieldHeartRate.setText(data);
             curRate=Integer.parseInt(data);
 
+            DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+            Date date = new Date();
+            recordedData.add(new Beat(curRate,date));
+
             // If we do display a Graph, make sure to update it
           //  if (SP.getBoolean("pref_showgraph",true)){
            //     if (!SP.getBoolean("pref_startstop",true) | SP.getBoolean("pref_startstop",true) &&
            if (mChronometer.getStarted()){
                     xSeries.add(measureMoment++,Integer.parseInt(data));
+
+                    if (xSeries.getItemCount() > 300 ){
+                        xSeries.remove(0);
+                    }
                     mChart.repaint();
                 }
            // }
@@ -498,9 +517,54 @@ public class DeviceControlActivity extends Activity {
             switch (which){
                 case DialogInterface.BUTTON_POSITIVE:
                     //Yes button clicked
+                    String state = Environment.getExternalStorageState();
+                    if (Environment.MEDIA_MOUNTED.equals(state)) {
+                        // we can write
+                        String curDateTime = java.text.DateFormat.getDateTimeInstance().format(Calendar.getInstance().getTime());
+                        String fileName = "AlphaMonitor Result " + curDateTime.replace(":","") + ".txt";
+                        File fileResult = new File(Environment.getExternalStorageDirectory(), fileName);
+                        FileOutputStream stream = null;
+
+                        try {
+                            stream = new FileOutputStream(fileResult);
+                        } catch (FileNotFoundException e) {
+                            e.printStackTrace();
+                        }
+                        try {
+                            //stream.write("text-to-write".getBytes());
+                                stream.write(GetRecordedRateData().getBytes());
+
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        } finally {
+                            try {
+                                stream.close();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+
+                        Uri uri = Uri.fromFile(fileResult);
+
+                        Intent shareIntent = new Intent();
+                        shareIntent.setAction(Intent.ACTION_SEND);
+                        shareIntent.putExtra(Intent.EXTRA_STREAM, uri);
+                        shareIntent.putExtra(Intent.EXTRA_SUBJECT, fileName );
+                        shareIntent.putExtra(Intent.EXTRA_TEXT, "Contained within the attachment of this message are the AlphaMonitor heartrate reading results.");
+
+                        shareIntent.setType("text/plain");
+
+                        try {
+                            startActivity(Intent.createChooser(shareIntent, "Share results..."));
+                        } catch (android.content.ActivityNotFoundException ex) {
+                            Toast.makeText(DeviceControlActivity.this, "There are no applications installed to share this with.", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                    else{
+                        Toast.makeText(DeviceControlActivity.this, "There is not external storage available for saving the data to.", Toast.LENGTH_SHORT).show();
+                    }
 
                     break;
-
                 case DialogInterface.BUTTON_NEGATIVE:
                     //No button clicked
 
@@ -508,6 +572,35 @@ public class DeviceControlActivity extends Activity {
             }
         }
     };
+
+    private String GetRecordedRateData() {
+        Type collectionType = new TypeToken<List<Beat>>() {
+        } // end new
+                .getType();
+
+        return new Gson().toJson(recordedData, collectionType);
+    }
+
+    public static String listToString(List list) {
+
+        int len = list.size();
+        int last = len - 1;
+        StringBuffer sb = new StringBuffer(2 * (len + 1));
+
+        sb.append('{');
+
+        for (int i = 0; i < len; i++) {
+            sb.append(list.get(i));
+
+            if (i != last) {
+                sb.append(',');
+            }
+        }
+
+        sb.append('}');
+
+        return sb.toString();
+    }
 
     private static IntentFilter makeGattUpdateIntentFilter() {
         final IntentFilter intentFilter = new IntentFilter();
