@@ -121,11 +121,11 @@ public class Chronometer extends TextView {
         int hours = (int)(timeElapsed / (3600 * 1000));
         int remaining = (int)(timeElapsed % (3600 * 1000));
 
-        int minutes = (int)(remaining / (60 * 1000));
-        remaining = (int)(remaining % (60 * 1000));
+        int minutes = remaining / (60 * 1000);
+        remaining = remaining % (60 * 1000);
 
-        int seconds = (int)(remaining / 1000);
-        remaining = (int)(remaining % (1000));
+        int seconds = remaining / 1000;
+        remaining = remaining % (1000);
 
         int milliseconds = (((int)timeElapsed % 1000) / 10);
 

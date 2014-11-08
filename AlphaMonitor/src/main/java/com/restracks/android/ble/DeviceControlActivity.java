@@ -43,7 +43,6 @@ import org.achartengine.model.XYMultipleSeriesDataset;
 import org.achartengine.model.XYSeries;
 import org.achartengine.renderer.XYMultipleSeriesRenderer;
 import org.achartengine.renderer.XYSeriesRenderer;
-import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -54,12 +53,6 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-/**
- * For a given BLE device, this Activity provides the user interface to connect, display data,
- * and display GATT services and characteristics supported by the device.  The Activity
- * communicates with {@code BluetoothLeService}, which in turn interacts with the
- * Bluetooth LE API.
- */
 public class DeviceControlActivity extends Activity {
     private SharedPreferences SP;
     private final static String TAG = DeviceControlActivity.class.getSimpleName();
@@ -88,8 +81,8 @@ public class DeviceControlActivity extends Activity {
     private final String LIST_UUID = "UUID";
     private long pauseBased=0;
 
+    // Define a graph
     GraphicalView mChart;
-    // Create XY Series for X Series.
     XYSeries xSeries=new XYSeries("X Series");
     int measureMoment=0;
     public int curRate;
@@ -253,15 +246,21 @@ public class DeviceControlActivity extends Activity {
     public void stopChrono(View view){
         mChronometer.stop();
         ((Chronometer)findViewById(R.id.chronoss)).setText("00:00:00");
+
+        //PATCH: Reacreate the chart by rebuilding it
+        CreateMainChart();
+        mChart.repaint();
         reset=true;
     }
 
     private void CreateMainChart()
     {
+        LinearLayout chart_container=(LinearLayout)findViewById(R.id.Chart_layout);
+
+        chart_container.removeAllViews();
+
         // Create a Dataset to hold the XSeries.
         XYMultipleSeriesDataset dataset =new XYMultipleSeriesDataset();
-
-        // Add X series to the Dataset.
         dataset.addSeries(xSeries);
 
         // Create XYSeriesRenderer to customize XSeries
@@ -274,11 +273,9 @@ public class DeviceControlActivity extends Activity {
 
         // Create XYMultipleSeriesRenderer to customize the whole chart
         XYMultipleSeriesRenderer mRenderer=new XYMultipleSeriesRenderer();
+
         //todo: Would be nice to have [time] on X-axis, to save display space removed for now
-        //mRenderer.setChartTitle("X Vs Y Chart");
         mRenderer.setXTitle("Time");
-        //mRenderer.setYTitle("Pulse");
-        //mRenderer.setZoomButtonsVisible(true);
         mRenderer.setXLabels(0);
         mRenderer.setLabelsTextSize(22);
         mRenderer.setPanEnabled(false);
@@ -286,47 +283,14 @@ public class DeviceControlActivity extends Activity {
         mRenderer.setClickEnabled(true);
         mRenderer.setInScroll(true);
         mRenderer.setShowLegend(false);
-
-
-//        for(int i=0;i<z.length;i++)
-//        {
-//            mRenderer.addXTextLabel(i, mMonth[i]);
-//        }
+        mRenderer.setZoomEnabled(false);
 
         // Adding the XSeriesRenderer to the MultipleRenderer.
         mRenderer.addSeriesRenderer(Xrenderer);
-        LinearLayout chart_container=(LinearLayout)findViewById(R.id.Chart_layout);
+
 
         // Creating an intent to plot line chart using dataset and multipleRenderer
-        mChart=(GraphicalView)ChartFactory.getCubeLineChartView(getBaseContext(), dataset, mRenderer, 0.3f);
-
-        //  Adding click event to the Line Chart.
-        mChart.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View arg0) {
-                // TODO Auto-generated method stub
-
-                SeriesSelection series_selection=mChart.getCurrentSeriesAndPoint();
-
-                if(series_selection!=null)
-                {
-                    int series_index=series_selection.getSeriesIndex();
-
-                    String select_series="X Series";
-                    if(series_index==0)
-                    {
-                        select_series="X Series";
-                    }else
-                    {
-                        select_series="Y Series";
-                    }
-
-                    //String month=mMonth[(int)series_selection.getXValue()];
-                    //int amount=(int)series_selection.getValue();
-                    //Toast.makeText(getBaseContext(), select_series + "in" + 1 + ":" + 1, Toast.LENGTH_LONG).show();
-                }
-            }
-        });
+        mChart= ChartFactory.getCubeLineChartView(getBaseContext(), dataset, mRenderer, 0.3f);
 
         // Add the graphical view mChart object into the Linear layout .
         chart_container.addView(mChart);
@@ -407,23 +371,24 @@ public class DeviceControlActivity extends Activity {
         if (data != null) {
             mDataField.setText(data);
             mDataFieldHeartRate.setText(data);
-            curRate=Integer.parseInt(data);
 
             DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
             Date date = new Date();
-            recordedData.add(new Beat(curRate,date));
+            int currentRate=Integer.parseInt(data);
+            recordedData.add(new Beat(currentRate,date));
 
-            // If we do display a Graph, make sure to update it
-          //  if (SP.getBoolean("pref_showgraph",true)){
+            // MvK: The option to turn off the graph is disabled in the settings panel for now:
+           // If we do display a Graph, make sure to update it
+           //  if (SP.getBoolean("pref_showgraph",true)){
            //     if (!SP.getBoolean("pref_startstop",true) | SP.getBoolean("pref_startstop",true) &&
            if (mChronometer.getStarted()){
-                    xSeries.add(measureMoment++,Integer.parseInt(data));
+                xSeries.add(measureMoment++,Integer.parseInt(data));
 
-                    if (xSeries.getItemCount() > 300 ){
-                        xSeries.remove(0);
-                    }
-                    mChart.repaint();
+                if (xSeries.getItemCount() > 300 ){
+                    xSeries.remove(0);
                 }
+                mChart.repaint();
+            }
            // }
         }
     }
@@ -496,19 +461,6 @@ public class DeviceControlActivity extends Activity {
             mGattCharacteristics.add(charas);
             gattCharacteristicData.add(gattCharacteristicGroupData);
         }
-
-//        SimpleExpandableListAdapter gattServiceAdapter = new SimpleExpandableListAdapter(
-//                this,
-//                gattServiceData,
-//                android.R.layout.simple_expandable_list_item_2,
-//                new String[] {LIST_NAME, LIST_UUID},
-//                new int[] { android.R.id.text1, android.R.id.text2 },
-//                gattCharacteristicData,
-//                android.R.layout.simple_expandable_list_item_2,
-//                new String[] {LIST_NAME, LIST_UUID},
-//                new int[] { android.R.id.text1, android.R.id.text2 }
-//        );
-//        mGattServicesList.setAdapter(gattServiceAdapter);
     }
 
     DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
@@ -531,8 +483,7 @@ public class DeviceControlActivity extends Activity {
                             e.printStackTrace();
                         }
                         try {
-                            //stream.write("text-to-write".getBytes());
-                                stream.write(GetRecordedRateData().getBytes());
+                            stream.write(GetRecordedRateDataJSON().getBytes());
 
                         } catch (IOException e) {
                             e.printStackTrace();
@@ -566,40 +517,16 @@ public class DeviceControlActivity extends Activity {
 
                     break;
                 case DialogInterface.BUTTON_NEGATIVE:
-                    //No button clicked
-
+                    // No button clicked
+                    // No need to do anything furthermore
                     break;
             }
         }
     };
 
-    private String GetRecordedRateData() {
-        Type collectionType = new TypeToken<List<Beat>>() {
-        } // end new
-                .getType();
-
+    private String GetRecordedRateDataJSON() {
+        Type collectionType = new TypeToken<List<Beat>>(){}.getType();
         return new Gson().toJson(recordedData, collectionType);
-    }
-
-    public static String listToString(List list) {
-
-        int len = list.size();
-        int last = len - 1;
-        StringBuffer sb = new StringBuffer(2 * (len + 1));
-
-        sb.append('{');
-
-        for (int i = 0; i < len; i++) {
-            sb.append(list.get(i));
-
-            if (i != last) {
-                sb.append(',');
-            }
-        }
-
-        sb.append('}');
-
-        return sb.toString();
     }
 
     private static IntentFilter makeGattUpdateIntentFilter() {
